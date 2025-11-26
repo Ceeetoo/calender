@@ -3,11 +3,10 @@ import calendar
 from datetime import datetime
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QFrame, QGraphicsDropShadowEffect,
                              QHBoxLayout, QLabel, QPushButton, QGridLayout, QApplication,
-                             QSystemTrayIcon, QMenu, QStackedWidget)  # <--- 新增 QStackedWidget
+                             QSystemTrayIcon, QMenu, QStackedWidget)
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QFont, QColor, QIcon, QPixmap, QPainter, QAction
 
-# 导入新页面和核心模块
 from ui.pomodoro_page import PomodoroPage
 from core.data_manager import DataManager
 from ui.calendar_items import DayWidget
@@ -17,6 +16,13 @@ from ui.detail_panel import DetailPanel
 class DesktopCalendar(QWidget):
     def __init__(self):
         super().__init__()
+
+        # 1. 设置应用程序名称 (解决通知栏显示 Python 的问题)
+        app = QApplication.instance()
+        if app:
+            app.setApplicationName("桌面日历")
+            app.setApplicationDisplayName("桌面日历")
+
         self.data_manager = DataManager()
         self.current_date = datetime.now()
         self.year = self.current_date.year
@@ -37,7 +43,6 @@ class DesktopCalendar(QWidget):
         self.main_layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
         self.setLayout(self.main_layout)
 
-        # 主容器（带阴影的白色背景）
         self.container = QFrame()
         self.container.setObjectName("MainContainer")
         self.container.setStyleSheet(
@@ -53,27 +58,39 @@ class DesktopCalendar(QWidget):
         self.container_layout.setSpacing(0)
         self.main_layout.addWidget(self.container)
 
-        # === 核心修改：使用 QStackedWidget 管理多页面 ===
         self.stack = QStackedWidget()
         self.container_layout.addWidget(self.stack)
 
-        # 1. 构建日历页面 (Index 0)
+        # 1. 构建日历页面
         self.calendar_page = QWidget()
         self.setup_calendar_layout(self.calendar_page)
         self.stack.addWidget(self.calendar_page)
 
-        # 2. 构建番茄钟页面 (Index 1)
+        # 2. 构建番茄钟页面
         self.pomodoro_page = PomodoroPage()
-        # 连接番茄钟页面的“返回”信号到 show_calendar 方法
         self.pomodoro_page.back_clicked.connect(self.show_calendar)
+
+        # 连接倒计时结束信号 -> 弹出通知
+        self.pomodoro_page.timer_finished.connect(self.show_pomodoro_notification)
+
         self.stack.addWidget(self.pomodoro_page)
 
-        # 初始定位
         screen = QApplication.primaryScreen().geometry()
         self.move(screen.width() - 380, 60)
 
+    def show_pomodoro_notification(self):
+        """当番茄钟结束时调用"""
+        if not self.tray_icon.isVisible():
+            self.tray_icon.show()
+
+        self.tray_icon.showMessage(
+            "专注完成！🎉",
+            "你刚刚完成了一个番茄钟，快起来活动一下吧！",
+            QSystemTrayIcon.MessageIcon.Information,
+            5000
+        )
+
     def setup_calendar_layout(self, parent_widget):
-        """构建日历界面的布局"""
         layout = QVBoxLayout(parent_widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -84,10 +101,8 @@ class DesktopCalendar(QWidget):
         cal_layout.setContentsMargins(15, 15, 15, 5)
         cal_layout.setSpacing(5)
 
-        # --- 导航栏 ---
         nav_layout = QHBoxLayout()
 
-        # [新增] 番茄钟入口按钮 (位于最左侧)
         self.btn_pomodoro = QPushButton("🍅")
         self.btn_pomodoro.setFixedSize(24, 24)
         self.btn_pomodoro.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -99,7 +114,6 @@ class DesktopCalendar(QWidget):
         self.btn_pomodoro.clicked.connect(self.show_pomodoro)
         nav_layout.addWidget(self.btn_pomodoro)
 
-        # 原有的导航按钮
         self.prev_btn = self.create_nav_btn("◀", self.prev_month)
         self.next_btn = self.create_nav_btn("▶", self.next_month)
         self.lbl_month = QLabel(f"{self.year}年 {self.month}月")
@@ -118,7 +132,6 @@ class DesktopCalendar(QWidget):
         nav_layout.addWidget(close_btn)
         cal_layout.addLayout(nav_layout)
 
-        # --- 星期头 ---
         week_layout = QGridLayout()
         week_days = ["一", "二", "三", "四", "五", "六", "日"]
         for i, day in enumerate(week_days):
@@ -128,12 +141,10 @@ class DesktopCalendar(QWidget):
             week_layout.addWidget(lbl, 0, i)
         cal_layout.addLayout(week_layout)
 
-        # --- 日历网格 ---
         self.calendar_grid = QGridLayout()
         self.calendar_grid.setSpacing(4)
         cal_layout.addLayout(self.calendar_grid)
 
-        # --- 折叠按钮 ---
         self.toggle_btn = QPushButton("﹀")
         self.toggle_btn.setFixedHeight(20)
         self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -144,7 +155,6 @@ class DesktopCalendar(QWidget):
 
         layout.addWidget(self.calendar_frame)
 
-        # --- 详情面板 ---
         self.detail_panel = DetailPanel(self.data_manager, self)
         self.detail_panel.data_changed.connect(self.refresh_calendar_styles_only)
         layout.addWidget(self.detail_panel)
@@ -152,22 +162,20 @@ class DesktopCalendar(QWidget):
         self.detail_panel.setVisible(False)
         self.toggle_btn.setText("﹀")
 
-        # 初始化日历数据
         self.refresh_calendar()
         self.detail_panel.load_date(self.selected_date_str)
 
-    # === 页面切换逻辑 ===
     def show_pomodoro(self):
-        """切换到番茄钟页面"""
         self.stack.setCurrentIndex(1)
 
     def show_calendar(self):
-        """切换回日历页面"""
         self.stack.setCurrentIndex(0)
 
-    # === 托盘逻辑 ===
+    # === 修复后的 init_tray 方法 (合并了图标修复和菜单显示) ===
     def init_tray(self):
         self.tray_icon = QSystemTrayIcon(self)
+
+        # 1. 绘制图标
         pixmap = QPixmap(32, 32)
         pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(pixmap)
@@ -179,9 +187,14 @@ class DesktopCalendar(QWidget):
         painter.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "C")
         painter.end()
-        self.tray_icon.setIcon(QIcon(pixmap))
+
+        # 2. 设置主窗口图标和托盘图标 (解决通知栏图标问题)
+        app_icon = QIcon(pixmap)
+        self.setWindowIcon(app_icon)
+        self.tray_icon.setIcon(app_icon)
         self.tray_icon.setToolTip("桌面日历")
 
+        # 3. 创建右键菜单 (之前缺失的部分)
         menu = QMenu()
         action_show = QAction("显示日历", self)
         action_show.triggered.connect(self.show_and_activate)
@@ -190,8 +203,11 @@ class DesktopCalendar(QWidget):
         action_quit = QAction("退出程序", self)
         action_quit.triggered.connect(QApplication.instance().quit)
         menu.addAction(action_quit)
+
         self.tray_icon.setContextMenu(menu)
         self.tray_icon.activated.connect(self.on_tray_activated)
+
+        # 4. 关键：显示托盘图标 (之前缺失的部分)
         self.tray_icon.show()
 
     def show_and_activate(self):
@@ -212,7 +228,6 @@ class DesktopCalendar(QWidget):
         else:
             event.accept()
 
-    # === 辅助方法 ===
     def create_nav_btn(self, text, func):
         btn = QPushButton(text)
         btn.setFixedSize(24, 24)
@@ -235,9 +250,7 @@ class DesktopCalendar(QWidget):
             for day in week:
                 if day != 0:
                     date_str = f"{self.year}-{self.month:02d}-{day:02d}"
-                    # 传入 data_manager
                     day_widget = DayWidget(day, date_str, self.data_manager)
-                    # 连接信号
                     day_widget.clicked.connect(self.select_date)
                     day_widget.data_updated.connect(self.refresh_calendar)
 
