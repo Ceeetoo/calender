@@ -158,8 +158,8 @@ class AutoResizingListWidget(QListWidget):
             self.setFixedHeight(total_height)
             self.setVisible(True)
         self.updateGeometry()
-        if self.parentWidget() and self.parentWidget().layout():
-            self.parentWidget().layout().activate()
+        if self.window():
+            self.window().adjustSize()
 
     def load_todos(self, todos):
         self.blockSignals(True)

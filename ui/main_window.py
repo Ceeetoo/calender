@@ -39,17 +39,22 @@ class DesktopCalendar(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self.main_layout = QVBoxLayout()
-        # [修改] 减小主窗口外边距 (原 10 -> 5)
-        self.main_layout.setContentsMargins(5, 5, 5, 5)
-        self.main_layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
+        
+        # [关键修改 1] 将边距从 10 改为 20 (必须大于阴影半径 15)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # [关键修改 2] 移除 SetFixedSize，避免与 Windows 绘图 API 冲突
+        # self.main_layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
+        
         self.setLayout(self.main_layout)
 
         self.container = QFrame()
         self.container.setObjectName("MainContainer")
         self.container.setStyleSheet(
             "#MainContainer { background-color: rgba(255, 255, 255, 0.98); border-radius: 16px; }")
+        
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(15)
+        shadow.setBlurRadius(15) # 阴影半径 15 < 边距 20，现在安全了
         shadow.setColor(QColor(0, 0, 0, 80))
         shadow.setOffset(0, 0)
         self.container.setGraphicsEffect(shadow)
