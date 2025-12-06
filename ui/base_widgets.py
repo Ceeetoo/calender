@@ -84,7 +84,7 @@ class AutoResizingListWidget(QListWidget):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-    def add_task(self, data):
+    def add_task(self, data, update_layout=True):
         self.blockSignals(True)
         item = QListWidgetItem()
         item.setFlags(Qt.ItemFlag.ItemIsEnabled)
@@ -104,7 +104,10 @@ class AutoResizingListWidget(QListWidget):
         self.setItemWidget(item, widget)
         item.setSizeHint(widget.sizeHint())
         self.blockSignals(False)
-        self.adjust_height()
+        
+        # 只有当需要更新布局时才调用调整高度
+        if update_layout:
+            self.adjust_height()
 
     def toggle_task_status(self, item, state):
         data = item.data(Qt.ItemDataRole.UserRole)
@@ -162,6 +165,8 @@ class AutoResizingListWidget(QListWidget):
         self.blockSignals(True)
         current_count = self.count()
         new_count = len(todos)
+
+        # 1. 更新现有项
         for i in range(min(current_count, new_count)):
             item = self.item(i)
             data = todos[i]
@@ -170,13 +175,22 @@ class AutoResizingListWidget(QListWidget):
             if widget:
                 display_text = self.format_text(data)
                 widget.update_data(display_text, data.get('done', False))
+                # 重新计算该项的尺寸提示，防止内容长度变化导致截断
+                item.setSizeHint(widget.sizeHint())
+
+        # 2. 添加新项 (关键：传入 update_layout=False)
         if new_count > current_count:
             for i in range(current_count, new_count):
-                self.add_task(todos[i])
+                self.add_task(todos[i], update_layout=False)
+
+        # 3. 删除多余项
         if current_count > new_count:
             for i in range(current_count - 1, new_count - 1, -1):
                 self.takeItem(i)
+
         self.blockSignals(False)
+        
+        # 4. 最后统一调整一次高度
         self.adjust_height()
 
 

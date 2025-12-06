@@ -71,7 +71,9 @@ class DayWidget(QFrame):
         self.click_timer.setInterval(250)
         self.click_timer.timeout.connect(self.execute_single_click)
 
-        self.setFixedSize(40, 45)
+        # [修改] 减小格子大小 (原 40, 45 -> 34, 38)
+        self.setFixedSize(34, 38)
+        
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -82,8 +84,15 @@ class DayWidget(QFrame):
 
         self.lbl_date = QLabel(str(day))
         self.lbl_date.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_date.setFont(QFont("Microsoft YaHei", 10, QFont.Weight.Bold))
+        # [修改] 稍微减小日期字体 (原 10 -> 9)
+        self.lbl_date.setFont(QFont("Microsoft YaHei", 9, QFont.Weight.Bold))
         self.lbl_date.setFixedHeight(16)
+
+        self.lbl_emoji = QLabel("")
+        self.lbl_emoji.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # [修改] 稍微减小 Emoji 字体 (原 10 -> 9)
+        self.lbl_emoji.setFont(QFont("Segoe UI Emoji", 9))
+        self.lbl_emoji.setFixedHeight(16)
 
         self.lbl_emoji = QLabel("")
         self.lbl_emoji.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -112,12 +121,16 @@ class DayWidget(QFrame):
         self.todo_count = todo_count
         if not mood:
             self.lbl_emoji.hide()
-            self.lbl_date.setFont(QFont("Microsoft YaHei", 10, QFont.Weight.Bold))
+            # 字体同步缩小
+            self.lbl_date.setFont(QFont("Microsoft YaHei", 9, QFont.Weight.Bold))
         else:
             self.lbl_emoji.show()
             self.lbl_emoji.setText(mood)
-            self.lbl_date.setFont(QFont("Microsoft YaHei", 9))
-        self.update_style(False) # 默认非选中，由外部控制选中态
+            # 字体同步缩小
+            self.lbl_date.setFont(QFont("Microsoft YaHei", 8)) 
+        
+        # 传入 False 代表不是选中状态 (这里保持原逻辑，只改字体大小)
+        self.update_style(False)
 
     def get_heatmap_color(self):
         if self.todo_count == 0: return "transparent"

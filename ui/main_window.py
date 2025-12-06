@@ -39,7 +39,8 @@ class DesktopCalendar(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self.main_layout = QVBoxLayout()
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        # [修改] 减小主窗口外边距 (原 10 -> 5)
+        self.main_layout.setContentsMargins(5, 5, 5, 5)
         self.main_layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
         self.setLayout(self.main_layout)
 
@@ -98,8 +99,10 @@ class DesktopCalendar(QWidget):
         self.calendar_frame = QFrame()
         self.calendar_frame.setStyleSheet("background: transparent;")
         cal_layout = QVBoxLayout(self.calendar_frame)
-        cal_layout.setContentsMargins(15, 15, 15, 5)
-        cal_layout.setSpacing(5)
+        
+        # [修改] 减小日历区域的内边距 (原 15,15,15,5 -> 10,10,10,2)
+        cal_layout.setContentsMargins(10, 10, 10, 2)
+        cal_layout.setSpacing(2) # [修改] 减小垂直间距 (原 5 -> 2)
 
         nav_layout = QHBoxLayout()
 
@@ -142,7 +145,8 @@ class DesktopCalendar(QWidget):
         cal_layout.addLayout(week_layout)
 
         self.calendar_grid = QGridLayout()
-        self.calendar_grid.setSpacing(4)
+        # [修改] 减小日历格子之间的间距 (原 4 -> 0 或 1)
+        self.calendar_grid.setSpacing(1) 
         cal_layout.addLayout(self.calendar_grid)
 
         self.toggle_btn = QPushButton("﹀")
